@@ -9,13 +9,12 @@ unit FMX.MapsUtils;
   * ===========================================================================
 }
 
-
 interface
 
 uses System.SysUtils, System.Math, FMX.Maps;
 
-function GetCenterCoord(MapCoordinates: TArray<TMapCoordinate>): TMapCoordinate;
 function CoordinatesToFitZoom(LatitudeA, LongitudeA, LatitudeB, LongitudeB: Double): Double;
+function GetCenterCoord(MapCoordinates: TArray<TMapCoordinate>): TMapCoordinate;
 function GooglePolylineToCoord(const Str: String; Precision: Integer): TArray<TMapCoordinate>;
 function HaversineDistance(LatitudeA, LongitudeA, LatitudeB, LongitudeB: Double): Double;
 
@@ -24,65 +23,67 @@ implementation
 // ===============================================================
 function GetCenterCoord(MapCoordinates: TArray<TMapCoordinate>): TMapCoordinate;
 var
-  tLat, tLon: Double;
-  i, j: Integer;
+  TLat, TLon: Double;
+  I, J: Integer;
 
 begin
-  i := Length(MapCoordinates);
-  tLat := 0;
-  tLon := 0;
+  I := Length(MapCoordinates);
+  TLat := 0;
+  TLon := 0;
 
-  for j := Low(MapCoordinates) to High(MapCoordinates) do
+  for J := Low(MapCoordinates) to High(MapCoordinates) do
   begin
-    tLat := tLat + MapCoordinates[j].Latitude;
-    tLon := tLon + MapCoordinates[j].Longitude;
+    TLat := TLat + MapCoordinates[J].Latitude;
+    TLon := TLon + MapCoordinates[J].Longitude;
   end;
 
-  Result.Latitude := tLat / i;
-  Result.Longitude := tLon / i;
+  Result.Latitude := TLat / I;
+  Result.Longitude := TLon / I;
 end;
 
 // ===============================================================
 function CoordinatesToFitZoom(LatitudeA, LongitudeA, LatitudeB, LongitudeB: Double): Double;
 var
-  latDif, lngDif, latFrac, lngFrac, lngZoom, latZoom: Double;
+  LatDif, LngDif, LatFrac, LngFrac, LngZoom, LatZoom: Double;
 
   function LatRad(Lat: Double): Double;
   var
-    sinValue, radX2: Double;
+    SinValue, RadX2: Double;
   begin
-    sinValue := Sin(Lat * Pi / 180);
-    radX2 := Ln((1 + sinValue) / (1 - sinValue)) / 2;
-    Result := Max(Min(radX2, Pi), -Pi) / 2;
+    SinValue := Sin(Lat * Pi / 180);
+    RadX2 := Ln((1 + SinValue) / (1 - SinValue)) / 2;
+    Result := Max(Min(RadX2, Pi), -Pi) / 2;
   end;
 
 begin
 
-  latDif := Abs(LatRad(LatitudeA) - LatRad(LatitudeB));
-  lngDif := Abs(LongitudeA - LongitudeB);
+  LatDif := Abs(LatRad(LatitudeA) - LatRad(LatitudeB));
+  LngDif := Abs(LongitudeA - LongitudeB);
 
-  latFrac := latDif / Pi;
-  lngFrac := lngDif / 360;
+  LatFrac := LatDif / Pi;
+  LngFrac := LngDif / 360;
 
-  lngZoom := Ln(1 / latFrac) / Ln(2);
-  latZoom := Ln(1 / lngFrac) / Ln(2);
+  LngZoom := Ln(1 / LatFrac) / Ln(2);
+  LatZoom := Ln(1 / LngFrac) / Ln(2);
 
-  Result := Min(lngZoom, latZoom);
+  Result := Min(LngZoom, LatZoom);
 
 end;
 
 // ===============================================================
 function GooglePolylineToCoord(const Str: String; Precision: Integer): TArray<TMapCoordinate>;
 var
-  Index, Shift, ByteResult, byte, factor: Integer;
-  Lat, lng, latitude_change, longitude_change: Integer;
-  coordinates: TArray<TMapCoordinate>;
+  Index, Shift, ByteResult, Byte, Factor: Integer;
+  Lat, Lng, LatitudeChange, LongitudeChange: Integer;
+  Coordinates: TArray<TMapCoordinate>;
+
 begin
+
   index := 0;
   Lat := 0;
-  lng := 0;
-  factor := Round(Power(10, Precision));
-  SetLength(coordinates, 0);
+  Lng := 0;
+  Factor := Round(Power(10, Precision));
+  SetLength(Coordinates, 0);
 
   while index < Length(Str) do
   begin
@@ -91,56 +92,57 @@ begin
     ByteResult := 0;
 
     repeat
-      byte := Ord(Str[index + 1]) - 63;
+      Byte := Ord(Str[index + 1]) - 63;
       Inc(index);
-      ByteResult := ByteResult or ((byte and $1F) shl Shift);
+      ByteResult := ByteResult or ((Byte and $1F) shl Shift);
       Shift := Shift + 5;
-    until byte < $20;
+    until Byte < $20;
 
-    latitude_change := IfThen((ByteResult and 1) <> 0, not(ByteResult shr 1), ByteResult shr 1);
+    LatitudeChange := IfThen((ByteResult and 1) <> 0, not(ByteResult shr 1), ByteResult shr 1);
     Shift := 0;
     ByteResult := 0;
 
     repeat
-      byte := Ord(Str[index + 1]) - 63;
+      Byte := Ord(Str[index + 1]) - 63;
       Inc(index);
-      ByteResult := ByteResult or ((byte and $1F) shl Shift);
+      ByteResult := ByteResult or ((Byte and $1F) shl Shift);
       Shift := Shift + 5;
-    until byte < $20;
+    until Byte < $20;
 
-    longitude_change := IfThen((ByteResult and 1) <> 0, not(ByteResult shr 1), ByteResult shr 1);
+    LongitudeChange := IfThen((ByteResult and 1) <> 0, not(ByteResult shr 1), ByteResult shr 1);
 
-    Lat := Lat + latitude_change;
-    lng := lng + longitude_change;
+    Lat := Lat + LatitudeChange;
+    Lng := Lng + LongitudeChange;
 
-    SetLength(coordinates, Length(coordinates) + 1);
-    coordinates[High(coordinates)] := TMapCoordinate.Create((Lat / factor), (lng / factor));
+    SetLength(Coordinates, Length(Coordinates) + 1);
+    Coordinates[High(Coordinates)] := TMapCoordinate.Create((Lat / Factor), (Lng / Factor));
   end;
 
-  Result := coordinates;
+  Result := Coordinates;
 end;
 
 // ===============================================================
 function HaversineDistance(LatitudeA, LongitudeA, LatitudeB, LongitudeB: Double): Double;
+
 const
-  earth_radius = 6371000; // In Meters
+  Earth_Radius = 6371000; // In Meters
 
 var
-  phi_1, phi_2, delta_phi: Double;
-  delta_lambda, z, c, dist: Double;
+  Phi1, Phi2, DeltaPhi: Double;
+  DeltaLambda, Z, C, Dist: Double;
 
 begin
 
-  phi_1 := DegToRad(LatitudeA);
-  phi_2 := DegToRad(LatitudeB);
+  Phi1 := DegToRad(LatitudeA);
+  Phi2 := DegToRad(LatitudeB);
 
-  delta_phi := DegToRad(LatitudeB - LatitudeA);
-  delta_lambda := DegToRad(LongitudeB - LongitudeA);
+  DeltaPhi := DegToRad(LatitudeB - LatitudeA);
+  DeltaLambda := DegToRad(LongitudeB - LongitudeA);
 
-  z := Power(Sin(delta_phi / 2), 2) + cos(phi_1) * cos(phi_2) * Power(Sin(delta_lambda / 2.0), 2);
-  c := 2 * ArcTan2(sqrt(z), sqrt(1 - z));
+  Z := Power(Sin(DeltaPhi / 2), 2) + cos(Phi1) * cos(Phi2) * Power(Sin(DeltaLambda / 2.0), 2);
+  C := 2 * ArcTan2(sqrt(Z), sqrt(1 - Z));
 
-  Result := earth_radius * c;
+  Result := Earth_Radius * C;
 
 end;
 
